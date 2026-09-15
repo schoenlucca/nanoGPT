@@ -13,7 +13,7 @@ from tokenizers.decoders import ByteLevel as ByteLevelDecoder
 VOCAB_SIZE = 4000
 
 # le o texto do Machado que voce ja disponibilizou nesta pasta
-input_file_path = os.path.join(os.path.dirname(__file__), 'romances_machado.txt')
+input_file_path = os.path.join(os.path.dirname(__file__), 'romances_machado')
 with open(input_file_path, 'r', encoding='utf-8') as f:
     data = f.read()
 
