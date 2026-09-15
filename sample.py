@@ -6,6 +6,7 @@ import pickle
 from contextlib import nullcontext
 import torch
 import tiktoken
+from tokenizers import Tokenizer
 from model import GPTConfig, GPT
 
 # -----------------------------------------------------------------------------
@@ -53,19 +54,28 @@ model.to(device)
 if compile:
     model = torch.compile(model) # requires PyTorch 2.0 (optional)
 
-# look for the meta pickle in case it is available in the dataset folder
+# look for the meta pickle / tokenizer in case they are available in the dataset folder
 load_meta = False
-if init_from == 'resume' and 'config' in checkpoint and 'dataset' in checkpoint['config']: # older checkpoints might not have these...
+if init_from == 'resume' and 'config' in checkpoint and 'dataset' in checkpoint['config']:
     meta_path = os.path.join('data', checkpoint['config']['dataset'], 'meta.pkl')
     load_meta = os.path.exists(meta_path)
+
 if load_meta:
     print(f"Loading meta from {meta_path}...")
     with open(meta_path, 'rb') as f:
         meta = pickle.load(f)
-    # TODO want to make this more general to arbitrary encoder/decoder schemes
-    stoi, itos = meta['stoi'], meta['itos']
-    encode = lambda s: [stoi[c] for c in s]
-    decode = lambda l: ''.join([itos[i] for i in l])
+    if 'stoi' in meta and 'itos' in meta:
+        # formato de nivel de caractere (stoi/itos simples)
+        stoi, itos = meta['stoi'], meta['itos']
+        encode = lambda s: [stoi[c] for c in s]
+        decode = lambda l: ''.join([itos[i] for i in l])
+    else:
+        # formato do nosso BPE proprio (treinado com a lib tokenizers)
+        tokenizer_path = os.path.join('data', checkpoint['config']['dataset'], 'tokenizer.json')
+        print(f"Loading custom BPE tokenizer from {tokenizer_path}...")
+        tok = Tokenizer.from_file(tokenizer_path)
+        encode = lambda s: tok.encode(s).ids
+        decode = lambda l: tok.decode(l)
 else:
     # ok let's assume gpt-2 encodings by default
     print("No meta.pkl found, assuming GPT-2 encodings...")
